@@ -1,0 +1,24 @@
+# Python
+__pycache__/
+*.py[cod]
+
+# Virtual env
+venv/
+.env
+.venv/
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Data files (IMPORTANT)
+uploads/
+backend/demo_datasets/
+*.vcf
+
+# Logs
+*.log
