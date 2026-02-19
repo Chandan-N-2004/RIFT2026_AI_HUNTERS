@@ -4,234 +4,174 @@ from datetime import datetime
 from risk_engine import evaluate_risk, recommendation
 from llm_explain import explain
 import os
-import time
+from drug_gene_map import DRUG_GENE_MAP
 from werkzeug.exceptions import HTTPException
+import time
 
 app = Flask(__name__)
-CORS(app, resources={r"/api/*": {"origins": "*"}})
+CORS(app)
 
-app.config['MAX_CONTENT_LENGTH'] = 5 * 1024 * 1024  # 5 MB upload limit
-
-UPLOAD_FOLDER = "uploads"
-os.makedirs(UPLOAD_FOLDER, exist_ok=True)
-
-# ==============================
-# Drug-Gene Mapping
-# ==============================
-
-DRUG_GENE_MAP = {
-    "CODEINE": ["CYP2D6"],
-    "CLOPIDOGREL": ["CYP2C19"],
-    "SIMVASTATIN": ["SLCO1B1"]
+# At the top of app.py
+PHENO_DISPLAY = {
+    "Poor_Metabolizer": "PM", 
+    "Intermediate": "IM", 
+    "Normal": "NM", 
+    "Ultrarapid": "URM", 
+    "Reduced_Function": "RF"
 }
+# ==============================
+# PHENOTYPE TRANSLATION LAYER
+# ==============================
+def infer_phenotype(gene, star_allele):
+    """
+    Maps Star Alleles to clinical phenotypes for the risk engine.
+    Covers the 6 critical genes required by the project specifications.
+    """
+    gene = gene.upper()
+    star = star_allele.strip()
 
-PHENO_MAP = {
-    "Poor_Metabolizer": "PM",
-    "Intermediate_Metabolizer": "IM",
-    "Normal_Metabolizer": "NM",
-    "Ultrarapid_Metabolizer": "URM",
-    None: "Unknown"
-}
+    mapping = {
+        "CYP2D6": {"*3": "Poor_Metabolizer", "*4": "Poor_Metabolizer", "*5": "Poor_Metabolizer", "*6": "Poor_Metabolizer"},
+        "CYP2C19": {"*2": "Poor_Metabolizer", "*3": "Poor_Metabolizer", "*17": "Ultrarapid"},
+        "CYP2C9": {"*2": "Intermediate", "*3": "Poor_Metabolizer"},
+        "SLCO1B1": {"*5": "Poor_Metabolizer", "*15": "Intermediate"},
+        "TPMT": {"*2": "Poor_Metabolizer", "*3A": "Poor_Metabolizer", "*3C": "Intermediate"},
+        "DPYD": {"*2A": "Poor_Metabolizer", "*13": "Poor_Metabolizer"}
+    }
+
+    return mapping.get(gene, {}).get(star, "Normal")
 
 # ==============================
-# ROUTES
+# UPDATED VCF PARSING (Industry Standard)
 # ==============================
-
-@app.route("/")
-def home():
-    return "PharmaGuard Backend Running"
-
-@app.route("/api/health")
-def health():
-    return jsonify({"status": "healthy"})
-
-
-@app.route("/api/analyze", methods=["POST"])
-def analyze():
-    start_time = time.time()
-
-    if 'file' not in request.files:
-        return jsonify({"error": "No VCF file uploaded"}), 400
-
-    file = request.files.get('file')
-    drug = request.form.get("drug")
-
-    if not drug:
-        return jsonify({"error": "Drug name missing"}), 400
-
-    drug_upper = drug.upper()
-
-    if drug_upper not in DRUG_GENE_MAP:
-        return jsonify({
-            "error": "Unsupported drug",
-            "supported_drugs": list(DRUG_GENE_MAP.keys())
-        }), 400
-
-    if not file or file.filename == "":
-        return jsonify({"error": "VCF file missing"}), 400
-
-    if not file.filename.lower().endswith(".vcf"):
-        return jsonify({"error": "Invalid file type. Please upload .vcf"}), 400
-
-    filepath = os.path.join(UPLOAD_FOLDER, file.filename)
-    file.save(filepath)
-
-    # Parse VCF
-    target_genes = DRUG_GENE_MAP[drug_upper]
-    all_variants = parse_vcf(filepath, gene_filter=target_genes)
-
-    response = build_response(drug_upper, all_variants)
-
-    response["processing_time_ms"] = int(
-        (time.time() - start_time) * 1000
-    )
-
-    return jsonify(response)
-
-
-# ==============================
-# VCF Parsing
-# ==============================
-
-def parse_vcf(filepath, gene_filter=None):
+def parse_vcf_authentic(filepath):
     variants = []
-
+    print(f"DEBUG: Opening file {filepath}")
     try:
         with open(filepath, "r") as f:
             for line in f:
-                if line.startswith("#") or not line.strip():
-                    continue
+                if line.startswith("#") or not line.strip(): continue
+                
+                # Split line and force everything to uppercase for matching
+                cols = line.strip().split("\t")
+                info_text = cols[7].upper()
+                
+                # DEBUG: See what the parser sees
+                print(f"DEBUG: Processing Line -> {info_text}")
 
-                if "GENE=" not in line:
-                    continue
+                # Extraction logic
+                gene = None
+                star = None
+                
+                # Manual split to handle different VCF styles
+                for item in info_text.split(";"):
+                    if "GENE=" in item: gene = item.split("=")[1]
+                    if "STAR=" in item: star = item.split("=")[1]
 
-                info = line.split("GENE=", 1)[1]
-                info = "GENE=" + info.strip()
-
-                fields = {}
-                for item in info.split(";"):
-                    if "=" in item:
-                        k, v = item.split("=", 1)
-                        fields[k.strip().upper()] = v.strip()
-
-                gene = fields.get("GENE")
-                allele = fields.get("ALLELE")
-                phenotype = fields.get("PHENOTYPE")
-
-                if gene_filter and gene and gene.upper() not in [
-                    g.upper() for g in gene_filter
-                ]:
-                    continue
-
-                variants.append({
-                    "gene": gene,
-                    "allele": allele,
-                    "phenotype": phenotype
-                })
-
-    except Exception:
-        return []
-
+                if gene and star:
+                    pheno = infer_phenotype(gene, star)
+                    print(f"DEBUG: Found {gene} {star} -> Phenotype: {pheno}")
+                    variants.append({
+                        "gene": gene,
+                        "allele": star,
+                        "rsid": cols[2],
+                        "phenotype": pheno
+                    })
+        
+        print(f"DEBUG: Total variants found: {len(variants)}")
+    except Exception as e:
+        print(f"DEBUG: Parser crashed with error: {e}")
     return variants
 
+@app.route("/")
+def home():
+    return {"status": "PharmaGuard Backend is Running"}, 200
 
-# ==============================
-# Build Response (Hackathon Schema)
-# ==============================
+@app.route("/api/analyze", methods=["POST"])
+def analyze():
+    
+    if 'file' not in request.files: return jsonify({"error": "No VCF"}), 400
+    
+    # Handle multiple drugs (comma-separated)
+    drug_input = request.form.get("drug", "").upper()
+    target_drugs = [d.strip() for d in drug_input.split(",") if d.strip()]
+    
+    file = request.files['file']
+    filepath = os.path.join("uploads", file.filename)
+    file.save(filepath)
+    
+    all_detected = parse_vcf_authentic(filepath)
+    results = []
 
-def build_response(drug, all_variants):
+    for drug in target_drugs:
+        relevant_genes = DRUG_GENE_MAP.get(drug, [])
+        v_subset = [v for v in all_detected if v["gene"] in relevant_genes]
+        
+        risk_data = evaluate_risk(v_subset, drug)
+        primary = v_subset[0] if v_subset else None
+        
+        # EXACT SCHEMA REQUIRED
+        results.append({
+            "patient_id": "PATIENT_001",
+            "drug": drug,
+            "timestamp": datetime.utcnow().isoformat() + "Z",
+            "risk_assessment": {
+                "risk_label": risk_data["risk"],
+                "confidence_score": risk_data["confidence"],
+                "severity": "high" if risk_data["risk"] == "Toxic" else "none"
+            },
+            "pharmacogenomic_profile": {
+                "primary_gene": primary["gene"] if primary else relevant_genes[0],
+                "diplotype": f"{primary['allele']}/wt" if primary else "wt/wt",
+                "phenotype": PHENO_DISPLAY.get(primary["phenotype"] if primary else "Normal", "NM"),
+                "detected_variants": v_subset
+            },
+            "clinical_recommendation": {"recommendation_text": recommendation(risk_data["risk"])},
+            "llm_generated_explanation": {
+                "summary": explain(primary["gene"], primary["allele"], drug, risk_data["risk"]) if primary 
+                           else f"No variants found for {drug}."
+            },
+            "quality_metrics": {"vcf_parsing_success": True}
+        })
 
-    relevant_genes = DRUG_GENE_MAP.get(drug, [])
+    if len(results) == 1:
+        return jsonify(results[0])
+    return jsonify(results)
 
-    filtered_variants = [
-        v for v in all_variants
-        if v["gene"] and v["gene"].upper() in relevant_genes
-    ]
-
-    # Risk Evaluation
-    risk_data = evaluate_risk(filtered_variants, drug)
+def build_response(drug, variants, target_genes):
+    risk_data = evaluate_risk(variants, drug)
     advice = recommendation(risk_data["risk"])
-
-    # Severity Mapping
-    severity_map = {
-        "Toxic": "high",
-        "Adjust Dosage": "moderate",
-        "Safe": "none"
-    }
-
-    severity = severity_map.get(risk_data["risk"], "low")
-
-    primary_variant = filtered_variants[0] if filtered_variants else None
-
-    if primary_variant:
-        primary_gene = primary_variant["gene"]
-        allele = primary_variant.get("allele")
-        diplotype = f"{allele}/{allele}" if allele else None
-        phenotype_code = PHENO_MAP.get(
-            primary_variant.get("phenotype"),
-            "Unknown"
-        )
-
-        explanation_text = explain(
-            primary_variant["gene"],
-            allele,
-            drug,
-            risk_data["risk"]
-        )
-
-        detected_variants = [
-            {
-                "rsid": f"rs{i+1}",
-                "gene": v["gene"],
-                "allele": v["allele"],
-                "phenotype": v["phenotype"]
-            }
-            for i, v in enumerate(filtered_variants)
-        ]
-
-    else:
-        primary_gene = None
-        diplotype = None
-        phenotype_code = "Unknown"
-        explanation_text = (
-            f"No pharmacogenomic markers relevant to {drug} detected."
-        )
-        detected_variants = []
+    
+    severity_map = {"Toxic": "high", "Adjust Dosage": "moderate", "Safe": "none"}
+    primary = variants[0] if variants else None
+    
+    # Get the display code (e.g., "NM") based on the phenotype
+    pheno_code = PHENO_DISPLAY.get(primary["phenotype"] if primary else "Normal", "NM")
 
     return {
         "patient_id": "PATIENT_001",
         "drug": drug,
         "timestamp": datetime.utcnow().isoformat() + "Z",
-
         "risk_assessment": {
             "risk_label": risk_data["risk"],
             "confidence_score": risk_data["confidence"],
-            "severity": severity
+            "severity": severity_map.get(risk_data["risk"], "none")
         },
-
         "pharmacogenomic_profile": {
-            "primary_gene": primary_gene,
-            "diplotype": diplotype,
-            "phenotype": phenotype_code,
-            "detected_variants": detected_variants
+            "primary_gene": primary["gene"] if primary else target_genes[0],
+            "diplotype": f"{primary['allele']}/wt" if primary else "wt/wt",
+            "phenotype": pheno_code,
+            "detected_variants": variants
         },
-
         "clinical_recommendation": {
             "recommendation_text": advice
         },
-
         "llm_generated_explanation": {
-            "summary": explanation_text
+            "summary": explain(primary["gene"], primary["allele"], drug, risk_data["risk"]) if primary 
+                       else f"No high-risk variants found for {drug}. Standard metabolic function expected."
         },
-
-        "quality_metrics": {
-            "vcf_parsing_success": True,
-            "relevant_variants_found": len(filtered_variants)
-        },
-
         "analysis_status": "complete"
     }
-
 
 # ==============================
 # ERROR HANDLING
