@@ -1,0 +1,138 @@
+
+body {
+  margin: 0;
+  padding: 0;
+  overflow-x: hidden;
+  font-family: 'Poppins', sans-serif;
+}
+
+/* Fade-in animation */
+.fade-in {
+  animation: fadeIn 1s ease forwards;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Button hover */
+.btn-hover:hover {
+  transform: scale(1.03);
+  transition: all 0.2s ease;
+}
+
+/* Upload hover */
+.upload-box:hover {
+  background: #f3f8ff;
+  border-color: #1e88e5;
+}
+
+/* Spinner animation */
+.spinner {
+  border: 3px solid #eee;
+  border-top: 3px solid #1e88e5;
+  border-radius: 50%;
+  width: 18px;
+  height: 18px;
+  display: inline-block;
+  margin-right: 6px;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  overflow-x: hidden;
+  font-family: 'Poppins', sans-serif;
+
+}
+
+/* MOBILE RESPONSIVE */
+
+@media (max-width: 768px) {
+
+  h1 {
+    font-size: 36px !important;
+  }
+
+  h2 {
+    font-size: 24px !important;
+  }
+
+  h3 {
+    font-size: 20px !important;
+  }
+
+  p {
+    font-size: 16px !important;
+  }
+
+  .navbar {
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .hero {
+    padding: 60px 15px !important;
+  }
+
+  .upload-card {
+    width: 95% !important;
+    padding: 20px !important;
+  }
+
+  button {
+    font-size: 16px !important;
+    padding: 14px !important;
+  }
+}
+
+/* Animated Background */
+
+body {
+  margin: 0;
+  padding: 0;
+  font-family: 'Poppins', sans-serif;
+
+  background: linear-gradient(
+    -45deg,
+    #eef2f7,
+    #e3ebf6,
+    #f0f7ff,
+    #dfe8f3
+  );
+
+  background-size: 400% 400%;
+  animation: gradientBG 12s ease infinite;
+}
+
+/* Animation */
+
+@keyframes gradientBG {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
