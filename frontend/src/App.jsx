@@ -9,7 +9,8 @@ function App() {
   const [darkMode, setDarkMode] = useState(false);
   const [themeFade, setThemeFade] = useState(false);
   const [expanded, setExpanded] = useState(false);
-
+  const [activeSection, setActiveSection] = useState(null);
+  
   const handleDrag = (e) => {
     e.preventDefault();
     e.stopPropagation();
@@ -116,9 +117,25 @@ function App() {
             Pharma Guard
           </h2>
           <div style={{ display: "flex", alignItems: "center", gap: "20px" }}>
-            <span style={{ cursor: "pointer" }}>Home</span>
-            <span style={{ cursor: "pointer" }}>About</span>
-            <span style={{ cursor: "pointer" }}>Contact</span>
+           <div style={{ display: "flex", gap: "20px" }}>
+              {["home", "about", "contact"].map((item) => (
+                <span
+                  key={item}
+                  onClick={() =>
+                    setActiveSection(
+                      activeSection === item ? null : item
+                    )
+                  }
+                  style={{
+                    cursor: "pointer",
+                    fontWeight: "500",
+                    textTransform: "capitalize"
+                  }}
+                >
+                  {item}
+                </span>
+              ))}
+            </div>
             <button
               onClick={() => {
                 setThemeFade(true);
@@ -142,6 +159,65 @@ function App() {
             </button>
           </div>
         </div>
+
+        {/* Animated Slide Section */}
+<div
+  style={{
+    maxHeight: activeSection ? "300px" : "0px",
+    overflow: "hidden",
+    textAlign: "center",
+    transition: "all 0.5s ease",
+    background: darkMode ? "#111827" : "#f9fafb",
+    padding: activeSection ? "30px" : "0px 30px"
+  }}
+>
+  {activeSection === "home" && (
+    <div>
+      <h3>Welcome to PharmaGuard</h3>
+      <p>
+        PharmaGuard is an AI-powered pharmacogenomic
+        risk prediction platform helping clinicians
+        make safer, personalized medication decisions.
+      </p>
+    </div>
+  )}
+
+  {activeSection === "about" && (
+    <div>
+      <h3>About Us</h3>
+      <p>
+        Built for RIFT 2026 Hackathon, Pharma Guard
+        integrates genomics, AI risk modeling, and
+        explainable clinical recommendations to enable
+        precision medicine.
+      </p>
+    </div>
+  )}
+
+     <span
+  onMouseEnter={(e) =>
+    (e.target.style.color = "#3b82f6")
+  }
+  onMouseLeave={(e) =>
+    (e.target.style.color = darkMode ? "#fff" : "#000")
+  }
+>
+  Home
+</span>
+
+        {activeSection === "contact" && (
+          <div>
+            <h3>Contact</h3>
+            <p>
+              📧 Email: pharmaguard@rift2026.ai  
+              <br />
+              📍 Bengaluru, India  
+              <br />
+              🤖 Built by AI Hunters Team
+            </p>
+          </div>
+        )}
+      </div>
 
         {/* HERO SECTION */}
         <div
@@ -290,6 +366,42 @@ function App() {
                 <p><b>Confidence:</b> {result.risk_assessment?.confidence_score}</p>
                 <p><b>Severity:</b> {result.risk_assessment?.severity}</p>
                 <hr />
+
+                {/* DASHBOARD GRAPH */}
+<div style={{ marginTop: 25 }}>
+  <h4>Risk Visualization</h4>
+
+  <div
+    style={{
+      height: "14px",
+      borderRadius: "10px",
+      background: "#e5e7eb",
+      overflow: "hidden",
+      marginTop: "8px"
+    }}
+  >
+    <div
+      style={{
+        width:
+          result.risk_assessment?.risk_label === "Safe"
+            ? "30%"
+            : result.risk_assessment?.risk_label === "Adjust Dosage"
+            ? "60%"
+            : "90%",
+        height: "100%",
+        background: getRiskColor(
+          result.risk_assessment?.risk_label
+        ),
+        transition: "width 0.6s ease"
+      }}
+    />
+  </div>
+
+  <p style={{ fontSize: "13px", marginTop: 6 , textAlign: "right", color: darkMode ? "#ccc" : "#555" }}>
+    Risk intensity indicator
+  </p>
+</div>
+
                 {expanded && (
                   <div style={{ marginTop: "20px" }}>
                     <h4>🧬 Pharmacogenomic Profile</h4>
@@ -346,9 +458,9 @@ function App() {
             }}
           >
             {[
-              { title: "🤖 AI Prediction", text: "ML-based genomic risk assessment." },
-              { title: "🧬 Precision Medicine", text: "Personalized drug recommendations." },
-              { title: "📊 Clinical Insights", text: "Reliable healthcare analytics." },
+              { title: "🤖 AI Prediction", text: "Advanced machine learning models analyze genomic variants to predict drug response risks, helping clinicians avoid adverse reactions before treatment begins." },
+              { title: "🧬 Precision Medicine", text: "PharmaGuard tailors medication recommendations based on individual genetic profiles, enabling safer, more effective personalized healthcare decisions." },
+              { title: "📊 Clinical Insights", text: "Actionable pharmacogenomic insights support clinical decision-making with clear risk assessment, dosage guidance, and evidence-based recommendations." },
             ].map((item, i) => (
               <div
                 key={i}
@@ -361,6 +473,8 @@ function App() {
                   transition: "transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275), box-shadow 0.4s ease",
                   cursor: "pointer",
                 }}
+
+                
                 onMouseEnter={(e) => {
                   e.currentTarget.style.transform = "translateY(-10px) scale(1.03)";
                   e.currentTarget.style.boxShadow = "0 20px 40px rgba(0,0,0,0.15)";
@@ -370,6 +484,7 @@ function App() {
                   e.currentTarget.style.boxShadow = "0 10px 30px rgba(0,0,0,0.08)";
                 }}
               >
+                
                 <h3 style={{ fontSize: "22px", color: "#1e88e5", marginBottom: "10px" }}>{item.title}</h3>
                 <p style={{ color: darkMode ? "#ccc" : "#555" }}>{item.text}</p>
               </div>
@@ -381,6 +496,9 @@ function App() {
         <div style={{ padding: "30px", textAlign: "center", background: darkMode ? "#181818" : "#f5f5f5" }}>
           Built for RIFT 2026 Hackathon
         </div>
+        
+
+
       </div>
     </div>
   );
