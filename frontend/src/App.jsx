@@ -59,7 +59,7 @@ function App() {
     formData.append("drug", drug);
     try {
       setLoading(true);
-      const response = await fetch("https://rift-2026-ai-hunters.vercel.app/", {
+      const response = await fetch("https://rift2026-ai-hunters-lnxw.onrender.com/", {
         method: "POST",
         body: formData,
       });
