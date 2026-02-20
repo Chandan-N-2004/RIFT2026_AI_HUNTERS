@@ -9,9 +9,7 @@ from werkzeug.exceptions import HTTPException
 import time
 
 app = Flask(__name__)
-CORS(app, origins=[
-    "https://rift-2026-ai-hunters.vercel.app"
-])
+CORS(app, origins="*")
 
 
 # At the top of app.py
