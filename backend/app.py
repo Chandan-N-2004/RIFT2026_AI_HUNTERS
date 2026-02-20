@@ -9,7 +9,10 @@ from werkzeug.exceptions import HTTPException
 import time
 
 app = Flask(__name__)
-CORS(app)
+CORS(app, origins=[
+    "https://rift-2026-ai-hunters.vercel.app"
+])
+
 
 # At the top of app.py
 PHENO_DISPLAY = {
