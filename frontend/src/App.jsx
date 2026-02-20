@@ -312,7 +312,7 @@ function App() {
             <h3>Drug Name</h3>
             <input
               type="text"
-              placeholder="CODEINE, WARFARIN..."
+              placeholder=" CLOPIDOGREL, AZATHIOPRINE, WARFARIN..."
               value={drug}
               onChange={(e) => setDrug(e.target.value)}
               style={{
