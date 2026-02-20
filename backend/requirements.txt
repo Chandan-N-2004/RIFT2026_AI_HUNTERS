@@ -4,3 +4,5 @@ werkzeug
 gunicorn
 requests
 python-dotenv
+pandas
+numpy

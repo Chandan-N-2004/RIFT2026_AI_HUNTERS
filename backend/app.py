@@ -98,6 +98,7 @@ def analyze():
     target_drugs = [d.strip() for d in drug_input.split(",") if d.strip()]
     
     file = request.files['file']
+    os.makedirs("uploads", exist_ok=True)
     filepath = os.path.join("uploads", file.filename)
     file.save(filepath)
     
