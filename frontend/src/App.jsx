@@ -59,7 +59,7 @@ function App() {
     formData.append("drug", drug);
     try {
       setLoading(true);
-      const response = await fetch("https://rift2026-ai-hunters-lnxw.onrender.com/", {
+      const response = await fetch("https://rift2026-ai-hunters-lnxw.onrender.com/api/analyze", {
         method: "POST",
         body: formData,
       });
