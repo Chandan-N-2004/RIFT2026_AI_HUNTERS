@@ -59,7 +59,7 @@ function App() {
     formData.append("drug", drug);
     try {
       setLoading(true);
-      const response = await fetch("http://localhost:5000/api/analyze", {
+      const response = await fetch("https://rift-2026-ai-hunters.vercel.app/", {
         method: "POST",
         body: formData,
       });
