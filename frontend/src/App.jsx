@@ -10,7 +10,7 @@ function App() {
   const [themeFade, setThemeFade] = useState(false);
   const [expanded, setExpanded] = useState(false);
   const [activeSection, setActiveSection] = useState(null);
-  
+
   const handleDrag = (e) => {
     e.preventDefault();
     e.stopPropagation();
@@ -117,8 +117,8 @@ function App() {
             Pharma Guard
           </h2>
           <div style={{ display: "flex", alignItems: "center", gap: "20px" }}>
-           <div style={{ display: "flex", gap: "20px" }}>
-              {["home", "about", "contact"].map((item) => (
+            <div style={{ display: "flex", gap: "20px" }}>
+              {["home", "about", "contact",].map((item) => (
                 <span
                   key={item}
                   onClick={() =>
@@ -136,6 +136,31 @@ function App() {
                 </span>
               ))}
             </div>
+            <button
+              onClick={() => window.open("https://drive.google.com/file/d/1605SsCNf5HbA3b-QvoE650QvXEtTDz2b/view?usp=sharing", "_blank")}
+              style={{
+                padding: "8px 16px",
+                borderRadius: "25px",
+                border: "none",
+                cursor: "pointer",
+                background: "linear-gradient(90deg,#1e88e5,#1565c0)",
+                color: "white",
+                fontSize: "14px",
+                fontWeight: "bold",
+                transition: "all 0.3s ease",
+                boxShadow: "0 4px 10px rgba(30, 136, 229, 0.2)",
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.transform = "translateY(-2px)";
+                e.currentTarget.style.boxShadow = "0 6px 15px rgba(30, 136, 229, 0.3)";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.transform = "translateY(0)";
+                e.currentTarget.style.boxShadow = "0 4px 10px rgba(30, 136, 229, 0.2)";
+              }}
+            >
+              📥 Download Dataset
+            </button>
             <button
               onClick={() => {
                 setThemeFade(true);
@@ -161,63 +186,63 @@ function App() {
         </div>
 
         {/* Animated Slide Section */}
-<div
-  style={{
-    maxHeight: activeSection ? "300px" : "0px",
-    overflow: "hidden",
-    textAlign: "center",
-    transition: "all 0.5s ease",
-    background: darkMode ? "#111827" : "#f9fafb",
-    padding: activeSection ? "30px" : "0px 30px"
-  }}
->
-  {activeSection === "home" && (
-    <div>
-      <h3>Welcome to PharmaGuard</h3>
-      <p>
-        PharmaGuard is an AI-powered pharmacogenomic
-        risk prediction platform helping clinicians
-        make safer, personalized medication decisions.
-      </p>
-    </div>
-  )}
+        <div
+          style={{
+            maxHeight: activeSection ? "300px" : "0px",
+            overflow: "hidden",
+            textAlign: "center",
+            transition: "all 0.5s ease",
+            background: darkMode ? "#111827" : "#f9fafb",
+            padding: activeSection ? "30px" : "0px 30px"
+          }}
+        >
+          {activeSection === "home" && (
+            <div>
+              <h3>Welcome to PharmaGuard</h3>
+              <p>
+                PharmaGuard is an AI-powered pharmacogenomic
+                risk prediction platform helping clinicians
+                make safer, personalized medication decisions.
+              </p>
+            </div>
+          )}
 
-  {activeSection === "about" && (
-    <div>
-      <h3>About Us</h3>
-      <p>
-        Built for RIFT 2026 Hackathon, Pharma Guard
-        integrates genomics, AI risk modeling, and
-        explainable clinical recommendations to enable
-        precision medicine.
-      </p>
-    </div>
-  )}
+          {activeSection === "about" && (
+            <div>
+              <h3>About Us</h3>
+              <p>
+                Built for RIFT 2026 Hackathon, Pharma Guard
+                integrates genomics, AI risk modeling, and
+                explainable clinical recommendations to enable
+                precision medicine.
+              </p>
+            </div>
+          )}
 
-     <span
-  onMouseEnter={(e) =>
-    (e.target.style.color = "#3b82f6")
-  }
-  onMouseLeave={(e) =>
-    (e.target.style.color = darkMode ? "#fff" : "#000")
-  }
->
-  Home
-</span>
+          <span
+            onMouseEnter={(e) =>
+              (e.target.style.color = "#3b82f6")
+            }
+            onMouseLeave={(e) =>
+              (e.target.style.color = darkMode ? "#fff" : "#000")
+            }
+          >
+            Home
+          </span>
 
-        {activeSection === "contact" && (
-          <div>
-            <h3>Contact</h3>
-            <p>
-              📧 Email: pharmaguard@rift2026.ai  
-              <br />
-              📍 Bengaluru, India  
-              <br />
-              🤖 Built by AI Hunters Team
-            </p>
-          </div>
-        )}
-      </div>
+          {activeSection === "contact" && (
+            <div>
+              <h3>Contact</h3>
+              <p>
+                📧 Email: pharmaguard@rift2026.ai
+                <br />
+                📍 Bengaluru, India
+                <br />
+                🤖 Built by AI Hunters Team
+              </p>
+            </div>
+          )}
+        </div>
 
         {/* HERO SECTION */}
         <div
@@ -291,8 +316,8 @@ function App() {
                 border: dragActive
                   ? "2px dashed #1e88e5"
                   : darkMode
-                  ? "2px dashed #555"
-                  : "2px dashed #ccc",
+                    ? "2px dashed #555"
+                    : "2px dashed #ccc",
                 background: dragActive ? "#1e88e520" : darkMode ? "#2a2a2a" : "#fafafa",
                 color: darkMode ? "#ffffff" : "#000000",
                 textAlign: "center",
@@ -368,39 +393,39 @@ function App() {
                 <hr />
 
                 {/* DASHBOARD GRAPH */}
-<div style={{ marginTop: 25 }}>
-  <h4>Risk Visualization</h4>
+                <div style={{ marginTop: 25 }}>
+                  <h4>Risk Visualization</h4>
 
-  <div
-    style={{
-      height: "14px",
-      borderRadius: "10px",
-      background: "#e5e7eb",
-      overflow: "hidden",
-      marginTop: "8px"
-    }}
-  >
-    <div
-      style={{
-        width:
-          result.risk_assessment?.risk_label === "Safe"
-            ? "30%"
-            : result.risk_assessment?.risk_label === "Adjust Dosage"
-            ? "60%"
-            : "90%",
-        height: "100%",
-        background: getRiskColor(
-          result.risk_assessment?.risk_label
-        ),
-        transition: "width 0.6s ease"
-      }}
-    />
-  </div>
+                  <div
+                    style={{
+                      height: "14px",
+                      borderRadius: "10px",
+                      background: "#e5e7eb",
+                      overflow: "hidden",
+                      marginTop: "8px"
+                    }}
+                  >
+                    <div
+                      style={{
+                        width:
+                          result.risk_assessment?.risk_label === "Safe"
+                            ? "30%"
+                            : result.risk_assessment?.risk_label === "Adjust Dosage"
+                              ? "60%"
+                              : "90%",
+                        height: "100%",
+                        background: getRiskColor(
+                          result.risk_assessment?.risk_label
+                        ),
+                        transition: "width 0.6s ease"
+                      }}
+                    />
+                  </div>
 
-  <p style={{ fontSize: "13px", marginTop: 6 , textAlign: "right", color: darkMode ? "#ccc" : "#555" }}>
-    Risk intensity indicator
-  </p>
-</div>
+                  <p style={{ fontSize: "13px", marginTop: 6, textAlign: "right", color: darkMode ? "#ccc" : "#555" }}>
+                    Risk intensity indicator
+                  </p>
+                </div>
 
                 {expanded && (
                   <div style={{ marginTop: "20px" }}>
@@ -474,7 +499,7 @@ function App() {
                   cursor: "pointer",
                 }}
 
-                
+
                 onMouseEnter={(e) => {
                   e.currentTarget.style.transform = "translateY(-10px) scale(1.03)";
                   e.currentTarget.style.boxShadow = "0 20px 40px rgba(0,0,0,0.15)";
@@ -484,7 +509,7 @@ function App() {
                   e.currentTarget.style.boxShadow = "0 10px 30px rgba(0,0,0,0.08)";
                 }}
               >
-                
+
                 <h3 style={{ fontSize: "22px", color: "#1e88e5", marginBottom: "10px" }}>{item.title}</h3>
                 <p style={{ color: darkMode ? "#ccc" : "#555" }}>{item.text}</p>
               </div>
@@ -496,7 +521,7 @@ function App() {
         <div style={{ padding: "30px", textAlign: "center", background: darkMode ? "#181818" : "#f5f5f5" }}>
           Built for RIFT 2026 Hackathon
         </div>
-        
+
 
 
       </div>
