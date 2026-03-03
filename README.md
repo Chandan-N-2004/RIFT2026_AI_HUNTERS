@@ -1,4 +1,5 @@
-# 🚑 PharmaGuard – Pharmacogenomic Risk Prediction System
+<h1 align="center">PharmaGuard – Pharmacogenomic Risk Prediction System</h1>  
+
 ## 📌 Overview
 
 PharmaGuard is an AI-powered pharmacogenomic risk prediction platform designed to analyze patient genetic data and predict personalized drug response risks.
@@ -32,7 +33,7 @@ PharmaGuard addresses this by:
 
 ### ✅ AI Risk Prediction
 
-Drug risk classification:
+* Drug risk classification:
 
 * Safe
 
@@ -65,7 +66,7 @@ Drug risk classification:
 
 * Downloadable structured JSON output
 ---
-# 🏗️ System Architecture
+# System Architecture
 
 ## Frontend:
 
@@ -126,29 +127,39 @@ Drug risk classification:
 
 #📥 Installation & Setup
 ## Clone repository
+```
 https://github.com/Chandan-N-2004/RIFT2026_AI_HUNTERS
+```
 
 ## Navigate to project folder
+```
 cd YOUR_REPO
+```
 
 ## Backend setup
+```
 pip install -r requirements.txt
 python app.py
+```
 
 # #Frontend setup
+```
 cd frontend
 npm install
 npm run dev
+```
 
 # 🌐 Live Demo
 
 ## 👉 Live Application:
+```
 https://rift-2026-ai-hunters.vercel.app/
+```
 
 # 🎥 Demo Video
-
-## 👉 LinkedIn Demo Video:
-https://linkedin.com/your-demo-video
+```
+https://docs.google.com/videos/d/1qnQ6O2chpJYQBd_rnBgDQ_SSK90T35trisPAXna-3c4/edit?usp=sharing
+```
 
 # 📊 Usage Guide
 
@@ -163,22 +174,38 @@ https://linkedin.com/your-demo-video
 5. Download clinical report (JSON)
 
 # 📁 Project Structure
-PharmaGuard/
+```
+
+RIFT-2026-AI-Hunters/
 │
 ├── frontend/
+│   ├── components/
+│   ├── pages/
+│   └── package.json
+│
 ├── backend/
-├── data/
-├── docs/
-├── requirements.txt
+│   ├── models/
+│   ├── routes/
+│   ├── main.py
+│   └── requirements.txt
+│
+├── public/
+│
 └── README.md
 
+```
+
 # 🧪 Example Output
+```
+
 {
   "patient_id": "PATIENT_001",
   "drug": "CODEINE",
   "risk_label": "Adjust Dosage",
   "confidence_score": 0.92
 }
+
+```
 # 🔐 Disclaimer
 
 This project is for research, educational, and hackathon purposes only.
@@ -187,16 +214,18 @@ It is not a clinical diagnostic tool.
 # 👥 Team Members
 ## 👨‍💻 Authors
 
-Bhoomika – Data Analysis
+Bhoomika A S – Data Analysis
 
-Chandan – Frontend Developer
+Chandan N – Frontend Developer
 
-Charan – Backend Developer
+Charan Kumar K H – Backend Developer
 
-Nitya – Backend Developer
+Nitya Phaneesh Chandra Nama – Backend Developer
 
 
 # 📧 Contact Emails
+
+asbhoomika51@email.com
 
 chandan2004.n@email.com
 
@@ -204,9 +233,8 @@ charankumarkh910@email.com
 
 nityanama101@email.com
 
-asbhoomika51@email.com
 
-# ⭐ Acknowledgements
+# ⭐ Acknowledgement
 
 * Hackathon organizers
 
@@ -214,6 +242,5 @@ asbhoomika51@email.com
 
 * Open-source contributors
 
-# 📜 License
 
-This project is licensed under the MIT License.
+<h1 align="center">This project is licensed under the MIT License.</h1>  
