@@ -191,7 +191,7 @@ function ResultCard({ data, darkMode }) {
           background: `linear-gradient(135deg, ${risk.color}dd, ${risk.color})`,
           color: "#fff", fontSize: "13px", fontWeight: 600, cursor: "pointer", transition: "all 0.2s",
         }}>
-          ⬇ Download
+          🡻 Download
         </button>
       </div>
     </div>
@@ -329,7 +329,7 @@ export default function App() {
             background: "linear-gradient(135deg,#3b82f6,#1d4ed8)", color: "#fff",
             fontSize: "13px", fontWeight: 600, cursor: "pointer",
           }}>
-            ⬇ Dataset
+            🡻 Dataset
           </button>
 
           <button onClick={() => setDarkMode(!darkMode)} style={{
