@@ -1,532 +1,593 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 
-function App() {
-  const [file, setFile] = useState(null);
-  const [drug, setDrug] = useState("");
-  const [dragActive, setDragActive] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState(null);
-  const [darkMode, setDarkMode] = useState(false);
-  const [themeFade, setThemeFade] = useState(false);
+/* ─────────────────────────────────────────────
+   COLOUR HELPERS
+───────────────────────────────────────────── */
+const RISK_META = {
+  Safe:           { color: "#10b981", bg: "#d1fae5", border: "#6ee7b7", icon: "✓", label: "Safe"           },
+  "Adjust Dosage":{ color: "#f59e0b", bg: "#fef3c7", border: "#fcd34d", icon: "⚠", label: "Adjust Dosage" },
+  Toxic:          { color: "#ef4444", bg: "#fee2e2", border: "#fca5a5", icon: "✕", label: "Toxic"          },
+  Ineffective:    { color: "#8b5cf6", bg: "#ede9fe", border: "#c4b5fd", icon: "∅", label: "Ineffective"   },
+};
+const getRisk = (label) => RISK_META[label] || { color: "#6b7280", bg: "#f3f4f6", border: "#d1d5db", icon: "?", label: label || "Unknown" };
+
+/* ─────────────────────────────────────────────
+   SINGLE RESULT CARD
+───────────────────────────────────────────── */
+function ResultCard({ data, darkMode }) {
   const [expanded, setExpanded] = useState(false);
-  const [activeSection, setActiveSection] = useState(null);
+  const risk      = getRisk(data.risk_assessment?.risk_label);
+  const confidence= Math.round((data.risk_assessment?.confidence_score ?? 0) * 100);
+  const profile   = data.pharmacogenomic_profile  ?? {};
+  const rec       = data.clinical_recommendation  ?? {};
+  const llm       = data.llm_generated_explanation ?? {};
 
-  const handleDrag = (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (e.type === "dragenter" || e.type === "dragover") {
-      setDragActive(true);
-    } else {
-      setDragActive(false);
-    }
-  };
-
-  const handleDrop = (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setDragActive(false);
-    if (e.dataTransfer.files?.[0]) {
-      setFile(e.dataTransfer.files[0]);
-    }
-  };
-
-  const getRiskColor = (label) => {
-    if (!label) return "#999";
-    const l = label.toLowerCase();
-    if (l.includes("safe")) return "#4caf50";
-    if (l.includes("adjust")) return "#ff9800";
-    if (l.includes("toxic") || l.includes("ineffective")) return "#f44336";
-    return "#999";
-  };
+  const cardBg    = darkMode ? "#1e2530" : "#ffffff";
+  const subBg     = darkMode ? "#252d3a" : "#f8fafc";
+  const border    = darkMode ? "#2e3a4e" : "#e2e8f0";
+  const textMain  = darkMode ? "#f1f5f9" : "#0f172a";
+  const textMuted = darkMode ? "#94a3b8" : "#64748b";
 
   const downloadJSON = () => {
-    if (!result) return;
-    const blob = new Blob([JSON.stringify(result, null, 2)], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "Pharma_Guard_result.json";
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement("a");
+    a.href     = url;
+    a.download = `PharmaGuard_${data.drug}_result.json`;
     a.click();
-  };
-
-  const handleAnalyze = async () => {
-    if (!file || !drug) {
-      alert("Upload VCF file and enter drug name");
-      return;
-    }
-    const formData = new FormData();
-    formData.append("file", file);
-    formData.append("drug", drug);
-    try {
-      setLoading(true);
-      const response = await fetch("https://rift2026-ai-hunters-lnxw.onrender.com/api/analyze", {
-        method: "POST",
-        body: formData,
-      });
-      if (!response.ok) {
-        const errorData = await response.json();
-        alert(errorData.error || "Backend error");
-        return;
-      }
-      const data = await response.json();
-      setResult(data);
-    } catch (error) {
-      alert("Unable to analyze file. Check if backend is running.");
-      console.error(error);
-    } finally {
-      setLoading(false);
-    }
+    URL.revokeObjectURL(url);
   };
 
   return (
-    <div
-      style={{
-        fontFamily: "Poppins, sans-serif",
-        overflowX: "hidden",
-        minHeight: "100vh",
-        background: darkMode
-          ? "linear-gradient(135deg, #0f2027, #203a43, #2c5364)"
-          : "linear-gradient(135deg,#eef2f7,#dfe8f3)",
-        color: darkMode ? "#ffffff" : "#000000",
-        transition: "background 0.8s ease, color 0.6s ease",
-      }}
-    >
-      {/* Fade Animation Wrapper - Corrected Scope */}
-      <div
-        style={{
-          opacity: themeFade ? 0.4 : 1,
-          transform: themeFade ? "scale(0.98)" : "scale(1)",
-          transition: "all 0.4s ease",
-        }}
-      >
-        {/* NAVBAR */}
-        <div
-          style={{
-            width: "100%",
-            padding: "20px 30px",
-            display: "flex",
-            flexWrap: "wrap",
-            justifyContent: "space-between",
-            alignItems: "center",
-            background: darkMode ? "#1e1e1e" : "white",
-            boxShadow: "0 2px 8px rgba(0,0,0,0.05)",
-          }}
-        >
-          <h2 style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-            <span style={{ fontSize: "50px" }}>🧬</span>
-            Pharma Guard
-          </h2>
-          <div style={{ display: "flex", alignItems: "center", gap: "20px" }}>
-            <div style={{ display: "flex", gap: "20px" }}>
-              {["home", "about", "contact",].map((item) => (
-                <span
-                  key={item}
-                  onClick={() =>
-                    setActiveSection(
-                      activeSection === item ? null : item
-                    )
-                  }
-                  style={{
-                    cursor: "pointer",
-                    fontWeight: "500",
-                    textTransform: "capitalize"
-                  }}
-                >
-                  {item}
-                </span>
+    <div style={{
+      background: cardBg, border: `1px solid ${border}`,
+      borderRadius: "20px", padding: "28px",
+      boxShadow: darkMode ? "0 4px 24px rgba(0,0,0,0.4)" : "0 4px 24px rgba(0,0,0,0.08)",
+      marginBottom: "20px", transition: "all 0.3s ease",
+    }}>
+
+      {/* ── Drug + Risk header ── */}
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "12px", marginBottom: "20px" }}>
+        <div>
+          <p style={{ margin: 0, fontSize: "12px", fontWeight: 600, letterSpacing: "0.1em", color: textMuted, textTransform: "uppercase" }}>Drug</p>
+          <h3 style={{ margin: "2px 0 0", fontSize: "22px", fontWeight: 700, color: textMain }}>{data.drug}</h3>
+        </div>
+        <div style={{
+          display: "flex", alignItems: "center", gap: "8px",
+          background: risk.bg, border: `1.5px solid ${risk.border}`,
+          borderRadius: "40px", padding: "8px 18px",
+        }}>
+          <span style={{ fontSize: "16px", color: risk.color, fontWeight: 700 }}>{risk.icon}</span>
+          <span style={{ fontSize: "14px", fontWeight: 700, color: risk.color }}>{risk.label}</span>
+        </div>
+      </div>
+
+      {/* ── Confidence bar ── */}
+      <div style={{ marginBottom: "20px" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "6px" }}>
+          <span style={{ fontSize: "12px", fontWeight: 600, color: textMuted, textTransform: "uppercase", letterSpacing: "0.08em" }}>Confidence Score</span>
+          <span style={{ fontSize: "13px", fontWeight: 700, color: risk.color }}>{confidence}%</span>
+        </div>
+        <div style={{ height: "8px", borderRadius: "99px", background: darkMode ? "#2e3a4e" : "#e2e8f0", overflow: "hidden" }}>
+          <div style={{
+            height: "100%", borderRadius: "99px",
+            width: `${confidence}%`,
+            background: `linear-gradient(90deg, ${risk.color}cc, ${risk.color})`,
+            transition: "width 0.8s cubic-bezier(0.4,0,0.2,1)",
+          }} />
+        </div>
+      </div>
+
+      {/* ── Severity badge ── */}
+      <div style={{ display: "flex", gap: "10px", marginBottom: "20px", flexWrap: "wrap" }}>
+        {[
+          ["Severity", data.risk_assessment?.severity ?? "—"],
+          ["Patient",  data.patient_id ?? "—"],
+        ].map(([label, val]) => (
+          <div key={label} style={{
+            background: subBg, border: `1px solid ${border}`,
+            borderRadius: "10px", padding: "8px 14px",
+          }}>
+            <p style={{ margin: 0, fontSize: "11px", color: textMuted, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.08em" }}>{label}</p>
+            <p style={{ margin: "2px 0 0", fontSize: "13px", fontWeight: 600, color: textMain, textTransform: "capitalize" }}>{val}</p>
+          </div>
+        ))}
+      </div>
+
+      {/* ── Expandable details ── */}
+      {expanded && (
+        <div style={{ display: "flex", flexDirection: "column", gap: "16px", marginBottom: "20px" }}>
+
+          {/* Pharmacogenomic profile */}
+          <div style={{ background: subBg, border: `1px solid ${border}`, borderRadius: "14px", padding: "18px" }}>
+            <p style={{ margin: "0 0 12px", fontSize: "13px", fontWeight: 700, color: textMuted, textTransform: "uppercase", letterSpacing: "0.08em" }}>
+              🧬 Pharmacogenomic Profile
+            </p>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
+              {[
+                ["Primary Gene",  profile.primary_gene  ?? "—"],
+                ["Phenotype",     profile.phenotype     ?? "—"],
+                ["Diplotype",     profile.diplotype     ?? "—"],
+                ["Variants Found",profile.detected_variants?.length ?? 0],
+              ].map(([k, v]) => (
+                <div key={k}>
+                  <p style={{ margin: 0, fontSize: "11px", color: textMuted, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em" }}>{k}</p>
+                  <p style={{ margin: "2px 0 0", fontSize: "14px", fontWeight: 600, color: textMain }}>{v}</p>
+                </div>
               ))}
             </div>
-            <button
-              onClick={() => window.open("https://drive.google.com/file/d/1605SsCNf5HbA3b-QvoE650QvXEtTDz2b/view?usp=sharing", "_blank")}
-              style={{
-                padding: "8px 16px",
-                borderRadius: "25px",
-                border: "none",
-                cursor: "pointer",
-                background: "linear-gradient(90deg,#1e88e5,#1565c0)",
-                color: "white",
-                fontSize: "14px",
-                fontWeight: "bold",
-                transition: "all 0.3s ease",
-                boxShadow: "0 4px 10px rgba(30, 136, 229, 0.2)",
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.transform = "translateY(-2px)";
-                e.currentTarget.style.boxShadow = "0 6px 15px rgba(30, 136, 229, 0.3)";
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.transform = "translateY(0)";
-                e.currentTarget.style.boxShadow = "0 4px 10px rgba(30, 136, 229, 0.2)";
-              }}
-            >
-              📥 Download Dataset
-            </button>
-            <button
-              onClick={() => {
-                setThemeFade(true);
-                setTimeout(() => {
-                  setDarkMode(!darkMode);
-                  setThemeFade(false);
-                }, 200);
-              }}
-              style={{
-                padding: "8px 16px",
-                borderRadius: "25px",
-                border: "none",
-                cursor: "pointer",
-                background: darkMode ? "#ffffff" : "#121212",
-                color: darkMode ? "#121212" : "#ffffff",
-                fontWeight: "bold",
-                transition: "all 0.4s ease",
-              }}
-            >
-              {darkMode ? "☀ Light" : "🌙 Dark"}
-            </button>
-          </div>
-        </div>
 
-        {/* Animated Slide Section */}
-        <div
-          style={{
-            maxHeight: activeSection ? "300px" : "0px",
-            overflow: "hidden",
-            textAlign: "center",
-            transition: "all 0.5s ease",
-            background: darkMode ? "#111827" : "#f9fafb",
-            padding: activeSection ? "30px" : "0px 30px"
-          }}
-        >
-          {activeSection === "home" && (
-            <div>
-              <h3>Welcome to PharmaGuard</h3>
-              <p>
-                PharmaGuard is an AI-powered pharmacogenomic
-                risk prediction platform helping clinicians
-                make safer, personalized medication decisions.
-              </p>
-            </div>
-          )}
-
-          {activeSection === "about" && (
-            <div>
-              <h3>About Us</h3>
-              <p>
-                Built for RIFT 2026 Hackathon, Pharma Guard
-                integrates genomics, AI risk modeling, and
-                explainable clinical recommendations to enable
-                precision medicine.
-              </p>
-            </div>
-          )}
-
-          <span
-            onMouseEnter={(e) =>
-              (e.target.style.color = "#3b82f6")
-            }
-            onMouseLeave={(e) =>
-              (e.target.style.color = darkMode ? "#fff" : "#000")
-            }
-          >
-            Home
-          </span>
-
-          {activeSection === "contact" && (
-            <div>
-              <h3>Contact</h3>
-              <p>
-                📧 Email: pharmaguard@rift2026.ai
-                <br />
-                📍 Bengaluru, India
-                <br />
-                🤖 Built by AI Hunters Team
-              </p>
-            </div>
-          )}
-        </div>
-
-        {/* HERO SECTION */}
-        <div
-          style={{
-            width: "100%",
-            padding: "100px 20px",
-            textAlign: "center",
-            position: "relative",
-            overflow: "hidden",
-            background: darkMode
-              ? "linear-gradient(135deg,#1e1e1e,#2c2c2c)"
-              : "linear-gradient(135deg,#eef2f7,#dfe8f3)",
-          }}
-        >
-          <div
-            style={{
-              position: "absolute",
-              top: "-200px",
-              left: "50%",
-              transform: "translateX(-50%)",
-              width: "600px",
-              height: "600px",
-              background: "radial-gradient(circle, rgba(30,136,229,0.25) 0%, transparent 70%)",
-              filter: "blur(70px)",
-              zIndex: 0,
-            }}
-          />
-          <div style={{ position: "relative", zIndex: 1 }}>
-            <h1 style={{ fontSize: "clamp(32px,6vw,64px)" }}>Pharma Guard</h1>
-            <p
-              style={{
-                fontSize: "clamp(16px,3vw,22px)",
-                color: darkMode ? "#ccc" : "#555",
-                maxWidth: "700px",
-                margin: "0 auto",
-              }}
-            >
-              AI-Powered pharmacogenomic risk prediction platform for precision medicine and safer
-              prescriptions.
-            </p>
-          </div>
-        </div>
-
-        {/* UPLOAD CARD */}
-        <div
-          style={{ display: "flex", justifyContent: "center", marginTop: "5px", padding: "0 20px" }}
-        >
-          <div
-            style={{
-              width: "100%",
-              maxWidth: "600px",
-              background: darkMode ? "#1e1e1e" : "white",
-              color: darkMode ? "#ffffff" : "#000000",
-              padding: "40px",
-              borderRadius: "28px",
-              boxShadow: "0 20px 50px rgba(0,0,0,0.10)",
-              transition: "all 0.3s ease",
-              overflow: "hidden",
-            }}
-          >
-            <h2>🧬 Upload Genetic File (.VCF)</h2>
-            <label
-              onDragEnter={handleDrag}
-              onDragLeave={handleDrag}
-              onDragOver={handleDrag}
-              onDrop={handleDrop}
-              style={{
-                display: "block",
-                padding: "40px",
-                borderRadius: "22px",
-                border: dragActive
-                  ? "2px dashed #1e88e5"
-                  : darkMode
-                    ? "2px dashed #555"
-                    : "2px dashed #ccc",
-                background: dragActive ? "#1e88e520" : darkMode ? "#2a2a2a" : "#fafafa",
-                color: darkMode ? "#ffffff" : "#000000",
-                textAlign: "center",
-                cursor: "pointer",
-                marginBottom: "20px",
-                transition: "all 0.4s ease",
-              }}
-            >
-              {file ? file.name : "Drag & Drop VCF File Here or click"}
-              <input
-                type="file"
-                accept=".vcf"
-                onChange={(e) => setFile(e.target.files[0])}
-                style={{ display: "none" }}
-              />
-            </label>
-            <h3>Drug Name</h3>
-            <input
-              type="text"
-              placeholder=" CLOPIDOGREL, AZATHIOPRINE, WARFARIN..."
-              value={drug}
-              onChange={(e) => setDrug(e.target.value)}
-              style={{
-                width: "100%",
-                padding: "14px",
-                borderRadius: "10px",
-                border: "1px solid #ccc",
-              }}
-            />
-            <button
-              onClick={handleAnalyze}
-              disabled={loading}
-              style={{
-                width: "100%",
-                marginTop: "20px",
-                padding: "20px",
-                borderRadius: "10px",
-                border: "none",
-                background: "linear-gradient(90deg,#1e88e5,#1565c0)",
-                color: "white",
-                fontWeight: "bold",
-                cursor: loading ? "not-allowed" : "pointer",
-                transition: "0.3s",
-              }}
-            >
-              {loading ? "Analyzing..." : "Analyze"}
-            </button>
-
-            {result && (
-              <div
-                style={{
-                  marginTop: "20px",
-                  padding: "20px",
-                  borderRadius: "15px",
-                  background: darkMode ? "#2a2a2a" : "#f8fbff",
-                }}
-              >
-                <h3>Drug Risk Assessment</h3>
-                <p><b>Drug:</b> {result.drug}</p>
-                <p>
-                  <b>Risk:</b>{" "}
-                  <span
-                    style={{
-                      color: getRiskColor(result.risk_assessment?.risk_label),
-                      fontWeight: "bold",
-                    }}
-                  >
-                    {result.risk_assessment?.risk_label || "Unknown"}
-                  </span>
-                </p>
-                <p><b>Confidence:</b> {result.risk_assessment?.confidence_score}</p>
-                <p><b>Severity:</b> {result.risk_assessment?.severity}</p>
-                <hr />
-
-                {/* DASHBOARD GRAPH */}
-                <div style={{ marginTop: 25 }}>
-                  <h4>Risk Visualization</h4>
-
-                  <div
-                    style={{
-                      height: "14px",
-                      borderRadius: "10px",
-                      background: "#e5e7eb",
-                      overflow: "hidden",
-                      marginTop: "8px"
-                    }}
-                  >
-                    <div
-                      style={{
-                        width:
-                          result.risk_assessment?.risk_label === "Safe"
-                            ? "30%"
-                            : result.risk_assessment?.risk_label === "Adjust Dosage"
-                              ? "60%"
-                              : "90%",
-                        height: "100%",
-                        background: getRiskColor(
-                          result.risk_assessment?.risk_label
-                        ),
-                        transition: "width 0.6s ease"
-                      }}
-                    />
-                  </div>
-
-                  <p style={{ fontSize: "13px", marginTop: 6, textAlign: "right", color: darkMode ? "#ccc" : "#555" }}>
-                    Risk intensity indicator
-                  </p>
-                </div>
-
-                {expanded && (
-                  <div style={{ marginTop: "20px" }}>
-                    <h4>🧬 Pharmacogenomic Profile</h4>
-                    <p><b>Primary Gene:</b> {result.pharmacogenomic_profile?.primary_gene || "N/A"}</p>
-                    <p><b>Phenotype:</b> {result.pharmacogenomic_profile?.phenotype || "N/A"}</p>
-                    <hr />
-                    <h4>💊 Clinical Recommendation</h4>
-                    <p>{result.clinical_recommendation?.recommendation_text || "N/A"}</p>
-                    <hr />
-                    <h4>🤖 AI Explanation</h4>
-                    <p>{result.llm_generated_explanation?.summary || "N/A"}</p>
-                  </div>
-                )}
-                <div style={{ display: "flex", justifyContent: "center", gap: "10px", marginTop: "20px", flexWrap: "wrap" }}>
-                  <button
-                    onClick={() => setExpanded(!expanded)}
-                    style={{ padding: "10px 15px", borderRadius: "20px", border: "none", cursor: "pointer", background: "#e5e7eb" }}
-                  >
-                    {expanded ? "Hide Details" : "Show Details"}
-                  </button>
-                  <button
-                    onClick={() => {
-                      navigator.clipboard.writeText(JSON.stringify(result, null, 2));
-                      alert("Results copied to clipboard! ✅");
-                    }}
-                    style={{ padding: "10px 15px", borderRadius: "20px", border: "none", cursor: "pointer", background: "#333", color: "white" }}
-                  >
-                    📋 Copy Results
-                  </button>
-                  <button
-                    onClick={downloadJSON}
-                    style={{ padding: "10px 15px", borderRadius: "20px", border: "none", cursor: "pointer", background: "green", color: "white" }}
-                  >
-                    Download JSON
-                  </button>
-                </div>
+            {/* Detected variants table */}
+            {profile.detected_variants?.length > 0 && (
+              <div style={{ marginTop: "14px", overflowX: "auto" }}>
+                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "12px" }}>
+                  <thead>
+                    <tr>
+                      {["Gene","Allele","RSID","Phenotype"].map(h => (
+                        <th key={h} style={{ textAlign: "left", padding: "6px 8px", color: textMuted, fontWeight: 600, borderBottom: `1px solid ${border}`, textTransform: "uppercase", letterSpacing: "0.06em" }}>{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {profile.detected_variants.map((v, i) => (
+                      <tr key={i} style={{ borderBottom: `1px solid ${border}` }}>
+                        <td style={{ padding: "6px 8px", color: textMain, fontWeight: 600 }}>{v.gene}</td>
+                        <td style={{ padding: "6px 8px", color: risk.color, fontWeight: 700 }}>{v.allele}</td>
+                        <td style={{ padding: "6px 8px", color: textMuted }}>{v.rsid || "—"}</td>
+                        <td style={{ padding: "6px 8px", color: textMuted }}>{v.phenotype?.replace(/_/g," ") || "—"}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             )}
           </div>
-        </div>
 
-        {/* FEATURES - With Fixed Animations */}
-        <div
-          style={{ padding: "80px 20px", textAlign: "center", background: darkMode ? "#222" : "white" }}
-        >
-          <h2 style={{ fontSize: "40px", marginBottom: "20px" }}> Why Pharma Guard? </h2>
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "center",
-              flexWrap: "wrap",
-              gap: "40px",
-              marginTop: "50px",
-            }}
-          >
-            {[
-              { title: "🤖 AI Prediction", text: "Advanced machine learning models analyze genomic variants to predict drug response risks, helping clinicians avoid adverse reactions before treatment begins." },
-              { title: "🧬 Precision Medicine", text: "PharmaGuard tailors medication recommendations based on individual genetic profiles, enabling safer, more effective personalized healthcare decisions." },
-              { title: "📊 Clinical Insights", text: "Actionable pharmacogenomic insights support clinical decision-making with clear risk assessment, dosage guidance, and evidence-based recommendations." },
-            ].map((item, i) => (
-              <div
-                key={i}
-                style={{
-                  width: "300px",
-                  padding: "30px",
-                  borderRadius: "20px",
-                  background: darkMode ? "rgba(255,255,255,0.05)" : "#ffffff",
-                  boxShadow: "0 10px 30px rgba(0,0,0,0.08)",
-                  transition: "transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275), box-shadow 0.4s ease",
-                  cursor: "pointer",
-                }}
+          {/* Clinical recommendation */}
+          <div style={{
+            background: darkMode ? "#1a2535" : risk.bg,
+            border: `1px solid ${risk.border}`,
+            borderRadius: "14px", padding: "18px",
+            borderLeft: `4px solid ${risk.color}`,
+          }}>
+            <p style={{ margin: "0 0 8px", fontSize: "13px", fontWeight: 700, color: risk.color, textTransform: "uppercase", letterSpacing: "0.08em" }}>
+              💊 Clinical Recommendation
+            </p>
+            <p style={{ margin: 0, fontSize: "14px", lineHeight: "1.7", color: textMain }}>
+              {rec.recommendation_text || "No recommendation available."}
+            </p>
+          </div>
 
-
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.transform = "translateY(-10px) scale(1.03)";
-                  e.currentTarget.style.boxShadow = "0 20px 40px rgba(0,0,0,0.15)";
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.transform = "translateY(0) scale(1)";
-                  e.currentTarget.style.boxShadow = "0 10px 30px rgba(0,0,0,0.08)";
-                }}
-              >
-
-                <h3 style={{ fontSize: "22px", color: "#1e88e5", marginBottom: "10px" }}>{item.title}</h3>
-                <p style={{ color: darkMode ? "#ccc" : "#555" }}>{item.text}</p>
-              </div>
-            ))}
+          {/* AI explanation */}
+          <div style={{ background: subBg, border: `1px solid ${border}`, borderRadius: "14px", padding: "18px" }}>
+            <p style={{ margin: "0 0 8px", fontSize: "13px", fontWeight: 700, color: textMuted, textTransform: "uppercase", letterSpacing: "0.08em" }}>
+              🤖 Clinical Explanation
+            </p>
+            <p style={{ margin: 0, fontSize: "14px", lineHeight: "1.8", color: textMain }}>
+              {llm.summary || "No explanation available."}
+            </p>
           </div>
         </div>
+      )}
 
-        {/* FOOTER */}
-        <div style={{ padding: "30px", textAlign: "center", background: darkMode ? "#181818" : "#f5f5f5" }}>
-          Built for RIFT 2026 Hackathon
-        </div>
-
-
-
+      {/* ── Action buttons ── */}
+      <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
+        <button onClick={() => setExpanded(!expanded)} style={{
+          padding: "9px 18px", borderRadius: "99px", border: `1px solid ${border}`,
+          background: "transparent", color: textMain, fontSize: "13px", fontWeight: 600,
+          cursor: "pointer", transition: "all 0.2s",
+        }}>
+          {expanded ? "Hide Details" : "Show Details"}
+        </button>
+        <button onClick={() => { navigator.clipboard.writeText(JSON.stringify(data, null, 2)); }} style={{
+          padding: "9px 18px", borderRadius: "99px", border: "none",
+          background: darkMode ? "#2e3a4e" : "#1e293b", color: "#fff",
+          fontSize: "13px", fontWeight: 600, cursor: "pointer", transition: "all 0.2s",
+        }}>
+          📋 Copy JSON
+        </button>
+        <button onClick={downloadJSON} style={{
+          padding: "9px 18px", borderRadius: "99px", border: "none",
+          background: `linear-gradient(135deg, ${risk.color}dd, ${risk.color})`,
+          color: "#fff", fontSize: "13px", fontWeight: 600, cursor: "pointer", transition: "all 0.2s",
+        }}>
+          ⬇ Download
+        </button>
       </div>
     </div>
   );
 }
 
-export default App;
+/* ─────────────────────────────────────────────
+   LOADING SKELETON
+───────────────────────────────────────────── */
+function Skeleton({ darkMode }) {
+  const bg = darkMode ? "#1e2530" : "#ffffff";
+  const sh = darkMode ? "#2e3a4e" : "#e2e8f0";
+  return (
+    <div style={{ background: bg, border: `1px solid ${darkMode?"#2e3a4e":"#e2e8f0"}`, borderRadius: "20px", padding: "28px", marginBottom: "20px" }}>
+      <style>{`@keyframes shimmer{0%{background-position:-400px 0}100%{background-position:400px 0}}`}</style>
+      {[120, 80, 60, 180, 100].map((w, i) => (
+        <div key={i} style={{
+          height: i === 0 ? "28px" : "14px",
+          width: `${w}px`, borderRadius: "6px", marginBottom: "14px",
+          background: `linear-gradient(90deg,${sh} 25%,${darkMode?"#374151":"#f1f5f9"} 50%,${sh} 75%)`,
+          backgroundSize: "400px 100%",
+          animation: "shimmer 1.4s ease-in-out infinite",
+        }} />
+      ))}
+    </div>
+  );
+}
+
+/* ─────────────────────────────────────────────
+   MAIN APP
+───────────────────────────────────────────── */
+export default function App() {
+  const [file,       setFile]       = useState(null);
+  const [drug,       setDrug]       = useState("");
+  const [dragActive, setDragActive] = useState(false);
+  const [loading,    setLoading]    = useState(false);
+  const [results,    setResults]    = useState(null);   // always array | null
+  const [error,      setError]      = useState(null);
+  const [darkMode,   setDarkMode]   = useState(false);
+  const [activeNav,  setActiveNav]  = useState(null);
+  const fileInputRef = useRef();
+
+  /* ── theme tokens ── */
+  const bg        = darkMode ? "linear-gradient(135deg,#0d1117,#161d27,#1a2433)" : "linear-gradient(135deg,#f0f4f8,#e8eef4,#dde5ef)";
+  const navBg     = darkMode ? "#0d1117" : "#ffffff";
+  const textMain  = darkMode ? "#f1f5f9" : "#0f172a";
+  const textMuted = darkMode ? "#94a3b8" : "#64748b";
+  const inputBg   = darkMode ? "#1e2530" : "#ffffff";
+  const inputBorder= darkMode ? "#2e3a4e" : "#cbd5e1";
+  const cardBg    = darkMode ? "#1e2530" : "#ffffff";
+  const cardBorder= darkMode ? "#2e3a4e" : "#e2e8f0";
+
+  /* ── drag handlers ── */
+  const handleDrag = (e) => {
+    e.preventDefault(); e.stopPropagation();
+    setDragActive(e.type === "dragenter" || e.type === "dragover");
+  };
+  const handleDrop = (e) => {
+    e.preventDefault(); e.stopPropagation();
+    setDragActive(false);
+    const f = e.dataTransfer.files?.[0];
+    if (f?.name.endsWith(".vcf")) setFile(f);
+    else setError("Please upload a .vcf file.");
+  };
+
+  /* ── analyze ── */
+  const handleAnalyze = async () => {
+    if (!file)       return setError("Please upload a VCF file.");
+    if (!drug.trim()) return setError("Please enter a drug name.");
+    setError(null);
+    setResults(null);
+    setLoading(true);
+
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("drug", drug);
+
+    try {
+      const res  = await fetch("https://rift2026-ai-hunters-lnxw.onrender.com/api/analyze", {
+        method: "POST", body: formData,
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error || `Server error (${res.status})`);
+        return;
+      }
+      // Normalise to array
+      setResults(Array.isArray(data) ? data : [data]);
+    } catch {
+      setError("Unable to reach the backend. Please check your connection.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  /* ── nav info panels ── */
+  const NAV_CONTENT = {
+    home:    { title: "Welcome to PharmaGuard", body: "An AI-powered pharmacogenomic risk prediction platform helping clinicians make safer, personalised medication decisions based on each patient's unique genetic profile." },
+    about:   { title: "About PharmaGuard", body: "Built for RIFT 2026 Hackathon, PharmaGuard integrates genomics, risk modelling, and explainable clinical recommendations to enable precision medicine at the point of care." },
+    contact: { title: "Contact", body: "📧 pharmaguard@rift2026.ai   📍 Bengaluru, India   🤖 Built by AI Hunters Team" },
+  };
+
+  return (
+    <div style={{ fontFamily: "'DM Sans', 'Segoe UI', sans-serif", minHeight: "100vh", background: bg, color: textMain, transition: "all 0.4s ease", overflowX: "hidden" }}>
+
+      {/* ════ NAVBAR ════ */}
+      <nav style={{
+        position: "sticky", top: 0, zIndex: 100,
+        background: navBg, borderBottom: `1px solid ${cardBorder}`,
+        padding: "0 32px", height: "64px",
+        display: "flex", alignItems: "center", justifyContent: "space-between",
+        boxShadow: darkMode ? "0 1px 0 #2e3a4e" : "0 1px 0 #e2e8f0",
+      }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+          <span style={{ fontSize: "28px" }}>🧬</span>
+          <span style={{ fontSize: "18px", fontWeight: 700, letterSpacing: "-0.02em", color: textMain }}>Pharma Guard</span>
+        </div>
+
+        <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+          {["home","about","contact"].map(item => (
+            <button key={item} onClick={() => setActiveNav(activeNav === item ? null : item)} style={{
+              padding: "7px 14px", borderRadius: "8px", border: "none",
+              background: activeNav === item ? (darkMode ? "#2e3a4e" : "#f1f5f9") : "transparent",
+              color: textMuted, fontSize: "14px", fontWeight: 500,
+              cursor: "pointer", textTransform: "capitalize", transition: "all 0.2s",
+            }}>
+              {item}
+            </button>
+          ))}
+
+          <div style={{ width: "1px", height: "24px", background: cardBorder, margin: "0 8px" }} />
+
+          <button onClick={() => window.open("https://drive.google.com/file/d/1605SsCNf5HbA3b-QvoE650QvXEtTDz2b/view?usp=sharing","_blank")} style={{
+            padding: "8px 16px", borderRadius: "99px", border: "none",
+            background: "linear-gradient(135deg,#3b82f6,#1d4ed8)", color: "#fff",
+            fontSize: "13px", fontWeight: 600, cursor: "pointer",
+          }}>
+            ⬇ Dataset
+          </button>
+
+          <button onClick={() => setDarkMode(!darkMode)} style={{
+            padding: "8px 16px", borderRadius: "99px", border: `1px solid ${cardBorder}`,
+            background: darkMode ? "#f1f5f9" : "#1e293b",
+            color: darkMode ? "#1e293b" : "#f1f5f9",
+            fontSize: "13px", fontWeight: 600, cursor: "pointer", marginLeft: "4px",
+          }}>
+            {darkMode ? "☀ Light" : "🌙 Dark"}
+          </button>
+        </div>
+      </nav>
+
+      {/* ── Nav dropdown ── */}
+      <div style={{
+        maxHeight: activeNav ? "120px" : "0",
+        overflow: "hidden", transition: "max-height 0.4s ease",
+        background: darkMode ? "#111827" : "#f8fafc",
+        borderBottom: activeNav ? `1px solid ${cardBorder}` : "none",
+      }}>
+        {activeNav && NAV_CONTENT[activeNav] && (
+          <div style={{ padding: "20px 40px", maxWidth: "800px", margin: "0 auto" }}>
+            <p style={{ margin: "0 0 4px", fontWeight: 700, fontSize: "15px", color: textMain }}>{NAV_CONTENT[activeNav].title}</p>
+            <p style={{ margin: 0, fontSize: "14px", color: textMuted, lineHeight: "1.6" }}>{NAV_CONTENT[activeNav].body}</p>
+          </div>
+        )}
+      </div>
+
+      {/* ════ HERO ════ */}
+      <div style={{ textAlign: "center", padding: "72px 20px 48px", position: "relative" }}>
+        <div style={{
+          position: "absolute", top: "0", left: "50%", transform: "translateX(-50%)",
+          width: "600px", height: "300px",
+          background: darkMode
+            ? "radial-gradient(ellipse,rgba(59,130,246,0.15) 0%,transparent 70%)"
+            : "radial-gradient(ellipse,rgba(59,130,246,0.10) 0%,transparent 70%)",
+          pointerEvents: "none",
+        }} />
+        <div style={{
+          display: "inline-flex", alignItems: "center", gap: "8px",
+          background: darkMode ? "#1e2530" : "#eff6ff",
+          border: `1px solid ${darkMode?"#2e3a4e":"#bfdbfe"}`,
+          borderRadius: "99px", padding: "6px 16px", marginBottom: "20px",
+        }}>
+          <span style={{ width: "7px", height: "7px", borderRadius: "50%", background: "#10b981", display: "inline-block" }} />
+          <span style={{ fontSize: "12px", fontWeight: 600, color: darkMode?"#60a5fa":"#1d4ed8", letterSpacing: "0.05em" }}>PHARMACOGENOMICS · AI-POWERED RISK ANALYSIS</span>
+        </div>
+        <h1 style={{ fontSize: "clamp(36px,6vw,64px)", fontWeight: 800, letterSpacing: "-0.03em", margin: "0 0 16px", color: textMain, lineHeight: 1.1 }}>
+          Pharma Guard
+        </h1>
+        <p style={{ fontSize: "clamp(16px,2vw,20px)", color: textMuted, maxWidth: "560px", margin: "0 auto", lineHeight: "1.6" }}>
+          AI-powered pharmacogenomic risk prediction for precision medicine and safer prescriptions.
+        </p>
+      </div>
+
+      {/* ════ MAIN CARD ════ */}
+      <div style={{ display: "flex", justifyContent: "center", padding: "0 20px 60px" }}>
+        <div style={{
+          width: "100%", maxWidth: "640px",
+          background: cardBg, border: `1px solid ${cardBorder}`,
+          borderRadius: "24px", padding: "36px",
+          boxShadow: darkMode ? "0 8px 40px rgba(0,0,0,0.5)" : "0 8px 40px rgba(0,0,0,0.10)",
+        }}>
+
+          {/* Upload zone */}
+          <p style={{ margin: "0 0 10px", fontSize: "13px", fontWeight: 700, color: textMuted, textTransform: "uppercase", letterSpacing: "0.08em" }}>
+            Genetic File
+          </p>
+          <label
+            onDragEnter={handleDrag} onDragLeave={handleDrag}
+            onDragOver={handleDrag}  onDrop={handleDrop}
+            style={{
+              display: "block", padding: "28px 20px", borderRadius: "14px",
+              border: `2px dashed ${dragActive ? "#3b82f6" : file ? "#10b981" : inputBorder}`,
+              background: dragActive ? (darkMode?"#1e3a5f":"#eff6ff") : file ? (darkMode?"#0f2b1f":"#f0fdf4") : (darkMode?"#141b24":"#f8fafc"),
+              textAlign: "center", cursor: "pointer", transition: "all 0.3s",
+              marginBottom: "20px",
+            }}
+          >
+            <span style={{ fontSize: "28px", display: "block", marginBottom: "8px" }}>
+              {file ? "✅" : "📁"}
+            </span>
+            <span style={{ fontSize: "14px", fontWeight: file ? 600 : 400, color: file ? "#10b981" : textMuted }}>
+              {file ? file.name : "Drag & drop .vcf file here, or click to browse"}
+            </span>
+            {file && (
+              <button onClick={(e) => { e.preventDefault(); setFile(null); }} style={{
+                display: "block", margin: "8px auto 0", fontSize: "12px", color: textMuted,
+                background: "none", border: "none", cursor: "pointer", textDecoration: "underline",
+              }}>
+                Remove
+              </button>
+            )}
+            <input ref={fileInputRef} type="file" accept=".vcf"
+              onChange={(e) => { const f = e.target.files[0]; if (f) setFile(f); }}
+              style={{ display: "none" }}
+            />
+          </label>
+
+          {/* Drug input */}
+          <p style={{ margin: "0 0 10px", fontSize: "13px", fontWeight: 700, color: textMuted, textTransform: "uppercase", letterSpacing: "0.08em" }}>
+            Drug Name
+          </p>
+          <input
+            type="text"
+            placeholder="e.g. WARFARIN, CLOPIDOGREL, CODEINE"
+            value={drug}
+            onChange={(e) => setDrug(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && handleAnalyze()}
+            style={{
+              width: "100%", padding: "13px 16px",
+              borderRadius: "12px", border: `1.5px solid ${inputBorder}`,
+              background: inputBg, color: textMain,
+              fontSize: "15px", outline: "none", boxSizing: "border-box",
+              transition: "border-color 0.2s", marginBottom: "20px",
+              fontFamily: "inherit",
+            }}
+            onFocus={(e) => e.target.style.borderColor = "#3b82f6"}
+            onBlur={(e)  => e.target.style.borderColor = inputBorder}
+          />
+
+          {/* Drug chips */}
+          <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", marginBottom: "20px", marginTop: "-12px" }}>
+            {["WARFARIN","CODEINE","CLOPIDOGREL","SIMVASTATIN","AZATHIOPRINE","FLUOROURACIL"].map(d => (
+              <button key={d} onClick={() => setDrug(prev => {
+                const existing = prev.split(",").map(x => x.trim()).filter(Boolean);
+                if (existing.includes(d)) return prev;
+                return existing.length ? `${prev}, ${d}` : d;
+              })} style={{
+                padding: "4px 12px", borderRadius: "99px",
+                border: `1px solid ${inputBorder}`,
+                background: drug.toUpperCase().includes(d) ? (darkMode?"#1e3a5f":"#eff6ff") : "transparent",
+                color: drug.toUpperCase().includes(d) ? "#3b82f6" : textMuted,
+                fontSize: "11px", fontWeight: 600, cursor: "pointer",
+                letterSpacing: "0.04em", transition: "all 0.2s",
+              }}>
+                {d}
+              </button>
+            ))}
+          </div>
+
+          {/* Error */}
+          {error && (
+            <div style={{
+              background: darkMode ? "#2d1b1b" : "#fee2e2",
+              border: "1px solid #fca5a5", borderRadius: "10px",
+              padding: "12px 16px", marginBottom: "16px",
+              fontSize: "13px", color: "#dc2626", fontWeight: 500,
+            }}>
+              ⚠ {error}
+            </div>
+          )}
+
+          {/* Analyze button */}
+          <button onClick={handleAnalyze} disabled={loading} style={{
+            width: "100%", padding: "15px",
+            borderRadius: "12px", border: "none",
+            background: loading
+              ? (darkMode ? "#2e3a4e" : "#e2e8f0")
+              : "linear-gradient(135deg,#3b82f6,#1d4ed8)",
+            color: loading ? textMuted : "#fff",
+            fontSize: "15px", fontWeight: 700, cursor: loading ? "not-allowed" : "pointer",
+            transition: "all 0.3s", letterSpacing: "0.02em",
+            display: "flex", alignItems: "center", justifyContent: "center", gap: "10px",
+          }}>
+            {loading && (
+              <span style={{
+                width: "16px", height: "16px", borderRadius: "50%",
+                border: "2.5px solid #ffffff50", borderTopColor: "#fff",
+                display: "inline-block",
+                animation: "spin 0.8s linear infinite",
+              }} />
+            )}
+            {loading ? "Analysing…" : "Analyse →"}
+          </button>
+
+          {/* ── Skeleton ── */}
+          {loading && (
+            <div style={{ marginTop: "28px" }}>
+              <Skeleton darkMode={darkMode} />
+            </div>
+          )}
+
+          {/* ── Results ── */}
+          {results && !loading && (
+            <div style={{ marginTop: "28px" }}>
+              <p style={{ margin: "0 0 16px", fontSize: "13px", fontWeight: 700, color: textMuted, textTransform: "uppercase", letterSpacing: "0.08em" }}>
+                {results.length > 1 ? `${results.length} Drug Results` : "Analysis Result"}
+              </p>
+              {results.map((r, i) => (
+                <ResultCard key={i} data={r} darkMode={darkMode} />
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* ════ FEATURES ════ */}
+      <div style={{ background: darkMode ? "#111827" : "#ffffff", padding: "72px 20px", textAlign: "center" }}>
+        <p style={{ margin: "0 0 8px", fontSize: "12px", fontWeight: 700, color: "#3b82f6", letterSpacing: "0.1em", textTransform: "uppercase" }}>Why Choose Us</p>
+        <h2 style={{ fontSize: "clamp(28px,4vw,40px)", fontWeight: 800, letterSpacing: "-0.02em", margin: "0 0 48px", color: textMain }}>
+          Why Pharma Guard?
+        </h2>
+        <div style={{ display: "flex", justifyContent: "center", flexWrap: "wrap", gap: "24px", maxWidth: "1000px", margin: "0 auto" }}>
+          {[
+            { emoji: "🤖", title: "AI Prediction",       color: "#3b82f6", text: "Advanced models analyse genomic variants to predict drug response risks, helping clinicians avoid adverse reactions before treatment begins." },
+            { emoji: "🧬", title: "Precision Medicine",  color: "#10b981", text: "Tailors medication recommendations based on individual genetic profiles, enabling safer, more effective personalised healthcare decisions." },
+            { emoji: "📊", title: "Clinical Insights",   color: "#f59e0b", text: "Actionable pharmacogenomic insights support clinical decision-making with clear risk assessment, dosage guidance, and evidence-based recommendations." },
+          ].map((item) => (
+            <div key={item.title} style={{
+              width: "280px", padding: "28px",
+              background: cardBg, border: `1px solid ${cardBorder}`,
+              borderRadius: "20px",
+              boxShadow: darkMode ? "0 4px 20px rgba(0,0,0,0.3)" : "0 4px 20px rgba(0,0,0,0.06)",
+              transition: "transform 0.3s, box-shadow 0.3s", cursor: "default",
+              textAlign: "left",
+            }}
+              onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-6px)"; e.currentTarget.style.boxShadow = darkMode?"0 12px 32px rgba(0,0,0,0.5)":"0 12px 32px rgba(0,0,0,0.12)"; }}
+              onMouseLeave={e => { e.currentTarget.style.transform = "translateY(0)";   e.currentTarget.style.boxShadow = darkMode?"0 4px 20px rgba(0,0,0,0.3)":"0 4px 20px rgba(0,0,0,0.06)"; }}
+            >
+              <div style={{
+                width: "44px", height: "44px", borderRadius: "12px",
+                background: `${item.color}18`, display: "flex",
+                alignItems: "center", justifyContent: "center",
+                fontSize: "22px", marginBottom: "16px",
+              }}>
+                {item.emoji}
+              </div>
+              <h3 style={{ margin: "0 0 10px", fontSize: "17px", fontWeight: 700, color: item.color }}>{item.title}</h3>
+              <p style={{ margin: 0, fontSize: "14px", lineHeight: "1.7", color: textMuted }}>{item.text}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* ════ FOOTER ════ */}
+      <div style={{
+        background: darkMode ? "#0d1117" : "#f8fafc",
+        borderTop: `1px solid ${cardBorder}`,
+        padding: "24px 32px",
+        display: "flex", alignItems: "center", justifyContent: "space-between",
+        flexWrap: "wrap", gap: "12px",
+      }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+          <span style={{ fontSize: "18px" }}>🧬</span>
+          <span style={{ fontSize: "13px", fontWeight: 600, color: textMuted }}>Pharma Guard</span>
+        </div>
+        <span style={{ fontSize: "13px", color: textMuted }}>Built for RIFT 2026 Hackathon · AI Hunters Team</span>
+      </div>
+
+      {/* Global keyframes */}
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&display=swap');
+        * { box-sizing: border-box; }
+        body { margin: 0; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        input::placeholder { color: #94a3b8; }
+      `}</style>
+    </div>
+  );
+}
