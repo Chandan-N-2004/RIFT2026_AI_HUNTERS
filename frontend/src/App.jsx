@@ -3,7 +3,7 @@ import { useState, useRef, useCallback } from "react";
 /* ─────────────────────────────────────────────
    CONSTANTS
 ───────────────────────────────────────────── */
-const API = "http://localhost:5000";
+const API = "https://rift2026-ai-hunters-ss4e.onrender.com/";
 
 const SUPPORTED_DRUGS = [
   "WARFARIN","CODEINE","CLOPIDOGREL",
